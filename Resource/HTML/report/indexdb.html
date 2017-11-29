@@ -1,0 +1,344 @@
+﻿<html>
+    <head>
+        <link rel="shortcut icon" type="image/ico" href="media/images/favicon.ico">
+        <meta name="viewport" content="initial-scale=1.0, maximum-scale=2.0">
+        <title>БД отчетов</title>
+        <link rel="stylesheet" type="text/css" href="media/css/jquery.dataTables.min.css">
+        <link rel="stylesheet" type="text/css" href="media/css/dataTables.tableTools.css">
+        <style type="text/css" class="init">
+            td.details-control {
+                background: url('media/images/details_open.png') no-repeat center center;
+                cursor: pointer;
+            }
+            tr.shown td.details-control {
+                background: url('media/images/details_close.png') no-repeat center center;
+            }
+
+            table {
+                font: 9pt Arial;
+                text-align: center;
+                background-color: #cc9;
+                cellspacing: 0;
+                cellpadding: 1px;
+                width: 100%;
+            }
+
+            Table, td, th {
+                border: 1px solid gray;
+            }
+
+            tr.group, tr.group:hover {
+                background-color: #ddd !important;
+            }
+            .Finish {
+                background-color: #ada !important;
+            }
+            .Errors {
+                color: rgb(255,0,153)
+            }
+            .Success {
+                color: rgb(51,0,204)
+            }
+            .Perform {
+                background-color: #FF0000
+            }
+            table.dataTable span.highlight {
+                background-color: #FFFF88;
+            }
+        </style>
+
+        <script type="text/javascript" src="media/js/jquery-1.11.3.min.js" ></script>
+        <script type="text/javascript" src="media/js/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" src="media/js/dataTables.tableTools.min.js"></script>
+        <script type="text/javascript" src="media/js/jquery.highlight.js"></script>
+        <script type="text/javascript" >
+            (function(f, c, b) {
+                b(c).on("init.dt.dth", function(c, d) {
+                    var a = new b.fn.dataTable.Api(d), e = b(a.table().body());
+                    if (b(a.table().node()).hasClass("searchHighlight") || d.oInit.searchHighlight || b.fn.dataTable.defaults.searchHighlight)
+                        a.on("draw.dt.dth column-visibility.dt.dth", function() {
+                            e.unhighlight();
+                            a.rows({
+                                filter : "applied"
+                            }).data().length && e.highlight(a.search());
+                        }).on("destroy", function() {
+                            a.off("draw.dt.dth column-visibility.dt.dth");
+                        });
+                });
+            })(window, document, jQuery);
+        </script>
+        <script type="text/javascript" class="init">
+              var Month = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь","Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            
+            /* Formatting function for row details - modify as you need */
+
+            function format(d) {
+                // `d` is the original data object for the row
+                function checkundefined(s){
+                  if (s==undefined) {return '&nbsp;'} else {return s};
+                }
+                
+                var arr = d.BoardsNumber.split(",");
+              
+                var s = '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;text-align:left;">'+
+                '<tr><td style="text-align:center;" colspan="4"><strong>Номера плат:</strong></td></tr>';
+                for (var i = 0; i < arr.length; i=i+4) {
+                    s = s + '<tr>';
+                    s = s + '<td>' + checkundefined(arr[i]) + '</td><td>' + 
+                                     checkundefined(arr[i+1]) + '</td><td>' + 
+                                     checkundefined(arr[i+2]) + '</td><td>' + 
+                                     checkundefined(arr[i+3]) + '</td>';
+                    s = s + '</tr>';
+                };
+                s = s + '</table>';
+                return s;
+            };
+
+            //var editor;
+
+            $(document).ready(function() {
+
+                var mytable = $('#master').DataTable({
+                    dom: 'T<"clear">lfrtip',
+                    searchHighlight : true,
+                    stateSave : true,
+                    "autoWidth" : false,
+                    "displayLength" : 50,
+                    "pagingType" : "full_numbers",
+                    "language" : {
+                        "aria" : {
+                            "sSortAscending" : " - нажмите мышкой/кл.ввод для сортировки по возрастанию",
+                            "sSortDescending" : " - нажмите мышкой/кл.ввод для сортировки по убыванию"
+                        },
+                        "paginate" : {
+                            "sFirst" : "Первая",
+                            "sLast" : "Последняя",
+                            "sNext" : "Следующая",
+                            "sPrevious" : "Предыдущая"
+                        },
+                        "sEmptyTable" : "Нет доступных данных в таблице",
+                        "sInfo" : "Показываем записи с _START_ по _END_ из _TOTAL_ записей",
+                        "sInfoEmpty" : "Нет записей для показа",
+                        "sInfoFiltered" : "(отфильтровано из _MAX_ записей)",
+                        "sLengthMenu" : "Показывать _MENU_ записей на страницу",
+                        "sLoadingRecords" : "Пожалуйста подождите - загружается...",
+                        "sProcessing" : "Обработка",
+                        "sSearch" : "Поиск по сер.номеру:",
+                        "sZeroRecords" : "Не найдено соответствующих записей"
+                    },
+                    //"jQueryUI" : true,
+                    "processing" : true,
+                    "serverSide" : true,
+                    "ajax" : "dataurl",
+                    "order" : [[2, 'asc']],
+                    "columnDefs" : [{
+                        "targets" : [2, 3],
+                        "visible" : false
+                    }],
+
+                    "drawCallback" : function(settings) {
+                        var api = this.api();
+                        var rows = api.rows({
+                            page : 'current'
+                        }).nodes();
+                        var last = null;
+
+                        api.column(2, {
+                            page : 'current'
+                        }).data().each(function(group, i) {
+                            if (last !== group) {
+                                if (settings.json.aaData[i].Vypolnen === 1) {
+                                    $(rows).eq(i).before('<tr class="group"><td class="Finish" colspan="17">Заказ: "' + group + '", инфо: "' + settings.json.aaData[i].Zakazchik + '"</td></tr>');
+                                } else {
+                                    $(rows).eq(i).before('<tr class="group"><td colspan="17">Заказ: "' + group + '", инфо: "' + settings.json.aaData[i].Zakazchik + '"</td></tr>');
+                                }
+                                last = group;
+                            }
+                        });
+                    },
+                    "columns" : [{
+                        "class" : 'details-control',
+                        "orderable" : false,
+                        "data" : null,
+                        "defaultContent" : ''
+                    }, {
+                        "data" : "ID",
+                        "render" : function(data, type, full, meta) {
+                            return meta.row + 1;
+                        }
+                    }, {
+                        "data" : "NomerZakaza"
+                    }, {
+                        "data" : "Zakazchik"
+                    }, {
+                        "data" : "SerNomer"
+                    }, {
+                        "data" : "NameTipoisp"
+                    }, {
+                        "data" : "God"
+                    }, {
+                        "data" : "Mesyac",
+                        "render" : {
+                          "sort" : function(data) {return jQuery.inArray(data,Month)} 
+                        }
+                    }, {
+                        "data" : "Otchety_nastrk",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo0",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo8",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo16",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo24",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo36",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo48",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_termo72",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_Test",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_Koeff",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }, {
+                        "data" : "Otchety_HtmKoeff",
+                        "render" : function(data, type, full, meta) {
+                            var pars = jQuery.parseJSON(data);
+                            return '<a href="' + pars.Href.substr(17, 1000) + '" class="' + pars.Result + '">' + pars.DateProverki + '</a>';
+                        }
+                    }]
+                });
+
+                // Array to track the ids of the details displayed rows
+                var detailRows = [];
+
+                $('#master tbody').on('click', 'tr td:first-child:not([colspan])', function() {
+                    var tr = $(this).closest('tr');
+                    var row = mytable.row(tr);
+                    var idx = $.inArray(tr.attr('id'), detailRows);
+
+                    if (row.child.isShown()) {
+                        tr.removeClass('shown');
+                        row.child.hide();
+
+                        // Remove from the 'open' array
+                        detailRows.splice(idx, 1);
+                    } else {
+                        tr.addClass('shown');
+                        row.child(format(row.data())).show();
+
+                        // Add to the 'open' array
+                        if (idx === -1) {
+                            detailRows.push(tr.attr('id'));
+                        }
+                    }
+                });
+
+                // On each draw, loop over the `detailRows` array and show any child rows
+                mytable.on('draw', function() {
+                    $.each(detailRows, function(i, id) {
+                        $('#' + id + ' td:first-child').trigger('click');
+                    });
+                });
+
+                mytable.on('draw', function() {
+                    var body = $(mytable.table().body());
+
+                    body.unhighlight();
+                    if (mytable.rows({
+                        filter : 'applied'
+                    }).data().length) {
+                        body.highlight(mytable.search());
+                    }
+                });
+
+                // Order by the grouping
+                $('#master tbody').on('click', 'tr.group', function() {
+                    var currentOrder = mytable.order()[0];
+                    if (currentOrder[0] === 2 && currentOrder[1] === 'asc') {
+                        mytable.order([2, 'desc']).draw();
+                    } else {
+                        mytable.order([2, 'asc']).draw();
+                    }
+                });
+                master.caption.innerHTML = '<strong>База данных отчетов ' + window.location.hostname + '</strong>';
+            });
+
+        </script>
+    </head>
+    <body>
+        <table id="master" class="display compact dataTable" style="margin-top:0px !important;">
+            <caption style="margin-bottom:10px;text-align: center;font-size: 140%;"/>
+            </caption>
+            <thead>
+                <tr>
+                    <th rowspan="2">№ плат</th>
+                    <th rowspan="2">№</th>
+                    <th rowspan="2">Номер заказа</th>
+                    <th rowspan="2">Инфо- заказчика</th>
+                    <th rowspan="2">Сер.номер</th>
+                    <th rowspan="2">Типоисполнение</th>
+                    <th rowspan="2">Год</th>
+                    <th rowspan="2">Месяц</th>
+                    <th rowspan="2">Настройка</th>
+                    <th colspan="7">Термопрогон</th>
+                    <th rowspan="2">Тест</th>
+                    <th rowspan="2">Коэфф-ты</th>
+                    <th rowspan="2">Коэфф-ты HTML</th>
+                </tr>
+                <tr>
+                    <th>до начала</th>
+                    <th>8 часов</th>
+                    <th>16 часов</th>
+                    <th>24 часов</th>
+                    <th>36 часов</th>
+                    <th>48 часов</th>
+                    <th>72 часов</th>
+                </tr>
+            </thead>
+        </table>
+        <hr/>
+        <h4>Для просмотра в любом браузер указать "http://(имя ПК в сетке):7777"</h4>
+    </body>
+</html>
