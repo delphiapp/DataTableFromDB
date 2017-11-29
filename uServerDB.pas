@@ -64,7 +64,7 @@ type
     function  GetIDAndDateTermoprTroughtSQL(sReq: string;var dt:Byte):RawUTF8;
     procedure UpdateProtocolToDB(aHTMLString: RawUTF8; sReq:string);
     function IsRequestProtocol(sReq:string):Boolean;
-    procedure CorrectPathFor_IE_Chrome(aCtxt: THttpServerRequest; var sReq:string);
+    procedure CorrectPathFor_IE_Chrome_MozillaNew(aCtxt: THttpServerRequest; var sReq:string);
     procedure LoadOtchetWithCKEditorToBrowser(aCtxt: THttpServerRequest;aOtchet:RawUTF8);
     function LoadFileNotFound(sReq:string):RawUTF8;
   protected
@@ -178,13 +178,13 @@ end;
 
 { TCustomHttpServer }
 
-procedure TCustomHttpServer.CorrectPathFor_IE_Chrome(aCtxt: THttpServerRequest; var sReq: string);
+procedure TCustomHttpServer.CorrectPathFor_IE_Chrome_MozillaNew(aCtxt: THttpServerRequest; var sReq: string);
 var ndx,numslash: Integer;
 begin
   sReq := ReplaceText(sReq, '\', '/');
   ndx:=Pos('?',sReq);  if ndx>0 then Delete(sReq,ndx,MaxInt); //delete param after sign "?"
-  if ContainsText(aCtxt.InHeaders,'MSIE') or ContainsText(aCtxt.InHeaders,'Chrome') then
-  begin
+//  if ContainsText(aCtxt.InHeaders,'MSIE') or ContainsText(aCtxt.InHeaders,'Chrome') then
+//  begin
     numslash:=0;
     ndx:=Pos('/',sReq);
     if ndx>0 then inc(numslash);
@@ -197,7 +197,7 @@ begin
         break;
       end;
     until ndx=0;
-  end;
+//  end;
 end;
 
 function TCustomHttpServer.CreateSQLQuery(sReq: string): string;
@@ -424,7 +424,7 @@ begin
       end;
     end else
     begin //for .js, .css, .jpg and so on
-      CorrectPathFor_IE_Chrome(Ctxt,sReq);
+      CorrectPathFor_IE_Chrome_MozillaNew(Ctxt,sReq);
       FileName := Format('%s%s%s',[ExtractFilePath(ParamStr(0)),'Resource\HTML\report\',sReq]);
       if FileExists(FileName) then
       begin
